@@ -14,6 +14,7 @@ fn entry(role: &str) -> RefEntry {
             process_instance: Some("test-instance".into()),
         },
         identity: RefEntryIdentity {
+            unique_at_capture: false,
             retained_object: None,
             role: role.into(),
             name: Some("Investors".into()),
@@ -36,6 +37,7 @@ fn entry(role: &str) -> RefEntry {
             source_window_title: None,
             source_window_bounds_hash: None,
             source_surface: SnapshotSurface::Window,
+            renderer_accessibility_forced: false,
         },
         scope: RefScope {
             root_ref: None,
