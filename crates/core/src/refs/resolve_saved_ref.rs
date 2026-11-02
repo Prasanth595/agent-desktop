@@ -209,12 +209,14 @@ fn gone() -> AdapterError {
     AdapterError::stale_ref_because("The window the ref was captured from is gone")
 }
 
-/// Whether a live window is the one the entry was captured from. Pid and a
-/// recorded window id must agree. Process generations must agree when both
+/// Whether a live window is the one the entry was captured from. The owner kind
+/// must match (a process-owned ref never lands on a window that appeared
+/// later), and pid and a recorded window id must agree. Process generations must agree when both
 /// sides carry one; a window listing that cannot read the generation leaves
 /// the pid and window id to decide, since some macOS window records omit it.
 fn belongs_to_entry(window: &WindowInfo, entry: &RefEntry) -> bool {
-    window.pid == entry.process.pid
+    window.is_process_owner() == entry.source.is_process_owned()
+        && window.pid == entry.process.pid
         && entry
             .source
             .source_window_id

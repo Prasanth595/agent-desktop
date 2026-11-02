@@ -51,6 +51,7 @@ pub(crate) fn observe_tree(
 ) -> Result<ObservedTree, AdapterError> {
     let request = (*request).validate()?;
     let deadline = crate::tree::locator_deadline::from_operation(request.deadline)?;
+    let _verdicts = crate::tree::properties::selection_owner::ObservationVerdicts::begin();
     let resolved = resolve_root(root, &request, deadline)?;
     let (tree, renderer_ready, stats) =
         traversal::LocatorTraversal::new(&request, resolved.context, deadline)
@@ -183,6 +184,9 @@ fn resolve_window_surface(
                 },
             )?
         }
+        SnapshotSurface::Window | SnapshotSurface::Dock if window.is_process_owner() => {
+            crate::tree::properties::element::element_for_pid(pid)
+        }
         SnapshotSurface::Window => {
             crate::system::window::window_resolve::window_element_for_info_with_deadline(
                 window, deadline,
@@ -194,6 +198,10 @@ fn resolve_window_surface(
             .ok_or_else(|| AdapterError::element_not_found("No open context menu"))?,
         SnapshotSurface::Menubar => crate::tree::surfaces::menubar_for_pid(pid, deadline)?
             .ok_or_else(|| AdapterError::element_not_found("No menu bar found"))?,
+        SnapshotSurface::MenuBarExtras => {
+            crate::tree::shell_surface::extras_menu_bar(pid, deadline)?
+                .ok_or_else(|| AdapterError::element_not_found("No menu bar extras found"))?
+        }
         _ => return Err(AdapterError::not_supported("snapshot surface")),
     };
     crate::tree::locator_deadline::remaining(deadline)?;

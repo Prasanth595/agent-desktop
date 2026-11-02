@@ -173,6 +173,32 @@ fn app_name_resolution_discriminates_absent_from_windowless() {
     assert_eq!(windowless.code(), "WINDOW_NOT_FOUND");
 }
 
+#[test]
+fn a_windowless_app_is_a_process_owner_only_when_it_is_background() {
+    use crate::AppPresentation::{Background, Foreground};
+    use crate::SnapshotSurface::{Menubar, Window};
+    let app = |presentation| crate::AppInfo {
+        presentation: Some(presentation),
+        ..running_app("Helper")
+    };
+    let cases = [
+        (vec![app(Background)], Window, None),
+        (vec![app(Background)], Menubar, None),
+        (vec![app(Foreground)], Window, Some("WINDOW_NOT_FOUND")),
+        (vec![app(Foreground)], Menubar, Some("WINDOW_NOT_FOUND")),
+        (vec![app(Background); 2], Window, Some("AMBIGUOUS_TARGET")),
+    ];
+    for (running_apps, surface, error_code) in cases {
+        let adapter = AppInventoryAdapter { running_apps };
+        let deadline = crate::Deadline::after(100).unwrap();
+        let result = resolve_window_for_surface(&adapter, Some("Helper"), None, surface, deadline);
+        match error_code {
+            None => assert!(result.unwrap().is_process_owner()),
+            Some(code) => assert_eq!(result.unwrap_err().code(), code),
+        }
+    }
+}
+
 /// An adapter whose `resolve_shell_surface` answers with the trait default -
 /// the exact shape `AdapterError::not_supported` builds - falls through to
 /// the application path for a routed shell kind, so upgrading an adapter in
@@ -295,14 +321,18 @@ fn a_window_owned_surface_kind_is_not_routed_to_the_seam() {
         resolution: Ok(shell_window()),
     };
 
-    let resolved = resolve_window_for_surface(
-        &adapter,
-        Some("WhatsApp"),
-        None,
+    for surface in [
         crate::SnapshotSurface::Sheet,
-        crate::Deadline::after(100).unwrap(),
-    )
-    .unwrap();
-
-    assert_eq!(resolved.id, "w-1");
+        crate::SnapshotSurface::MenuBarExtras,
+    ] {
+        let resolved = resolve_window_for_surface(
+            &adapter,
+            Some("WhatsApp"),
+            None,
+            surface,
+            crate::Deadline::after(100).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(resolved.id, "w-1");
+    }
 }

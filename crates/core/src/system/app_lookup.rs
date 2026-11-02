@@ -5,6 +5,27 @@ use crate::{
     adapter::{PlatformAdapter, WindowFilter},
 };
 
+/// Owner for a named app that lists no window. A background app is observed
+/// through its process; any other app has not presented a window yet. Failures
+/// of the app lookup propagate, except an adapter without an app inventory,
+/// which keeps the window error.
+pub(crate) fn windowless_app_owner(
+    adapter: &dyn PlatformAdapter,
+    app: &str,
+    deadline: Deadline,
+) -> Result<WindowInfo, AppError> {
+    match resolve_app(Some(app), adapter, deadline) {
+        Ok(info) if info.presentation == Some(crate::AppPresentation::Background) => {
+            Ok(WindowInfo::for_process(&info))
+        }
+        Ok(_) => Err(AdapterError::app_has_no_window(app).into()),
+        Err(AppError::Adapter(error)) if error.code == ErrorCode::PlatformNotSupported => {
+            Err(AdapterError::app_has_no_window(app).into())
+        }
+        Err(error) => Err(error),
+    }
+}
+
 pub(crate) fn resolve_app(
     app: Option<&str>,
     adapter: &dyn PlatformAdapter,

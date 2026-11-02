@@ -19,6 +19,8 @@ struct BridgedApplication {
     pid: i32,
     #[serde(default)]
     bundle_id: Option<String>,
+    #[serde(default)]
+    executable: Option<String>,
     launch_time: NullableLaunchTime,
     activation_policy: ActivationPolicy,
 }
@@ -51,6 +53,7 @@ pub(crate) struct WindowOwner {
     pub(crate) pid: i32,
     pub(crate) name: String,
     pub(crate) bundle_id: Option<String>,
+    pub(crate) executable: Option<String>,
     pub(crate) launch_time: Option<f64>,
     pub(crate) activation_policy: ActivationPolicy,
 }
@@ -72,10 +75,7 @@ impl WindowOwnerSnapshot {
             .iter()
             .filter(|owner| {
                 agent_desktop_core::app_name_matches(&owner.name, identifier)
-                    || owner
-                        .bundle_id
-                        .as_deref()
-                        .is_some_and(|bundle_id| bundle_id.eq_ignore_ascii_case(identifier))
+                    || has_alias(&owner.bundle_id, &owner.executable, identifier)
             })
             .map(|owner| owner.pid)
             .collect()
@@ -129,11 +129,7 @@ pub(crate) fn list_apps_scoped_until(
         deadline,
         |app| {
             (agent_desktop_core::app_name_matches(&app.name, name)
-                || (bundle_id.is_none()
-                    && app
-                        .bundle_id
-                        .as_deref()
-                        .is_some_and(|candidate| candidate.eq_ignore_ascii_case(name))))
+                || (bundle_id.is_none() && has_alias(&app.bundle_id, &app.executable, name)))
                 && bundle_id.is_none_or(|bundle| {
                     app.bundle_id
                         .as_deref()
@@ -142,6 +138,14 @@ pub(crate) fn list_apps_scoped_until(
         },
         false,
     )
+}
+
+/// Whether `identifier` is the app's bundle ID or executable name.
+fn has_alias(bundle_id: &Option<String>, executable: &Option<String>, identifier: &str) -> bool {
+    [bundle_id, executable]
+        .into_iter()
+        .flatten()
+        .any(|alias| alias.eq_ignore_ascii_case(identifier))
 }
 
 pub(crate) fn window_owner_snapshot_until(
@@ -276,6 +280,7 @@ fn window_owner_snapshot_from_json(
             pid: app.pid,
             name: app.name,
             bundle_id: app.bundle_id,
+            executable: app.executable,
             launch_time,
             activation_policy: app.activation_policy,
         });
