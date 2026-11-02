@@ -49,7 +49,7 @@ Read the core skill first (`agent-desktop skills get desktop`) for the observe, 
 
 **Identity.** `launch` accepts a display name (`"System Settings"`) or a bundle ID (`com.apple.systempreferences`). Other commands take the display name through `--app`. Window IDs such as `w-4521` stay valid for the life of the window. Find them with `list-windows`.
 
-**Repeated collections.** A ref to a row in a list whose rows share an accessibility identifier can act on another row after the list changes. Take a new snapshot after the list changes.
+**Refs follow their element.** A ref stores the element's own accessibility address. If the element is removed or the app restarts, the ref returns `STALE_REF`; it never lands on a look-alike. Identical controls, such as several `Delete` buttons, each keep their own ref.
 
 **Keys.** The primary modifier is `cmd`: `press cmd+c`, `press cmd+s`. Quit shortcuts such as `cmd+q`, `cmd+shift+q`, `cmd+alt+esc`, `ctrl+cmd+q` and `cmd+shift+delete` return `POLICY_DENIED` unless you pass `--force`. To quit an app, use `close-app`. Punctuation keys work in combos, as the symbol (`,` `.` `/` `;` `'` `[` `]` `\` `-` `=` `` ` ``) or by name (`comma`, `period`, `slash`, `semicolon`, `quote`, `leftbracket`, `rightbracket`, `backslash`, `minus`, `equal`, `grave`). Each one is sent with the key that types it in the active keyboard layout, so `press cmd+,` opens Settings on ANSI and JIS keyboards alike.
 
